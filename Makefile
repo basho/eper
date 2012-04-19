@@ -1,5 +1,13 @@
-all:
-	./rebar compile escriptize
+all: deps compile
+
+compile:
+	@./rebar compile escriptize
+
+deps:
+	@./rebar get-deps
 
 clean:
-	./rebar clean
+	@./rebar clean
+
+distclean: clean
+	@./rebar delete-deps
