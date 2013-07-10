@@ -8,6 +8,26 @@
 -author('Mats Cronqvist').
 -export([encrypt/1,encrypt/2,decrypt/1,decrypt/2]).
 
+-ifdef(new_hash).
+des_cbc_encrypt(Keys,Ivec,Data) ->
+  crypto:block_encrypt(des_cbc,Keys,Ivec,Data).
+
+des_cbc_decrypt(Keys,Ivec,Data) ->
+  crypto:block_decrypt(des_cbc,Keys,Ivec,Data).
+
+md5(Bin) ->
+  crypto:hash(md5,Bin).
+-else.
+des_cbc_encrypt(Keys,Ivec,Data) ->
+  crypto:des_cbc_encrypt(Keys,Ivec,Data).
+
+des_cbc_decrypt(Keys,Ivec,Data) ->
+  crypto:des_cbc_decrypt(Keys,Ivec,Data).
+
+md5(Bin) ->
+  crypto:md5(Bin).
+-endif.
+
 phrase() -> atom_to_list(erlang:get_cookie()).
 
 encrypt(Data) -> encrypt(phrase(),Data).
@@ -15,17 +35,17 @@ encrypt(Data) -> encrypt(phrase(),Data).
 encrypt(Phrase,Data) ->
   assert_crypto(),
   {Key,Ivec} = make_key(Phrase),
-  crypto:des_cbc_encrypt(Key,Ivec,pad(Data)).
+  des_cbc_encrypt(Key,Ivec,pad(Data)).
 
 decrypt(Data) -> decrypt(phrase(),Data).
 
 decrypt(Phrase,Data) ->
   assert_crypto(),
   {Key,Ivec} = make_key(Phrase),
-  unpad(crypto:des_cbc_decrypt(Key,Ivec,Data)).
+  unpad(des_cbc_decrypt(Key,Ivec,Data)).
 
 make_key(Phrase) ->
-  <<Key:8/binary,Ivec:8/binary>> = crypto:md5(Phrase),
+  <<Key:8/binary,Ivec:8/binary>> = md5(Phrase),
   {Key,Ivec}.
 
 pad(Term) ->
