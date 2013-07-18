@@ -8,7 +8,7 @@
 -author('Mats Cronqvist').
 -export([encrypt/1,encrypt/2,decrypt/1,decrypt/2]).
 
--ifdef(new_hash).
+-ifndef(old_hash).
 des_cbc_encrypt(Keys,Ivec,Data) ->
   crypto:block_encrypt(des_cbc,Keys,Ivec,Data).
 
