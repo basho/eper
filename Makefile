@@ -11,3 +11,5 @@ clean:
 
 distclean: clean
 	@./rebar delete-deps
+
+include tools.mk

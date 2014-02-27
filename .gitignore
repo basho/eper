@@ -9,3 +9,4 @@ autom4te.cache
 config*
 *beam
 deps
+.local_dialyzer_plt
