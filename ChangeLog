@@ -1,9 +1,646 @@
-commit c6b6e439ed81fe6b9ce16082c38ea897ee2674eb
+commit 6d19bd98e3f8f7ee065f951e2f3e2a170f232bfa
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Sep 17 14:19:49 2014 +0200
+
+    v0.90.0
+
+src/eper.app.src
+
+commit 45cb2ae5081eec54878c222725e94158abda7182
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Sep 17 14:19:15 2014 +0200
+
+    docs
+
+README
+
+commit a16807918935f16c8e7a0dc96831b6a0b9112bd4
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Sep 17 14:17:04 2014 +0200
+
+    massaged atop:calls/0
+
+src/atop.erl
+
+commit 638c6d44153dd50176aeceefec4dea1932e6ef40
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Sep 16 14:36:46 2014 +0200
+
+    v0.89.0
+
+ChangeLog
+src/eper.app.src
+
+commit 4936fdac364abe23a6ead700de98cc5aecec78fc
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Sep 16 12:36:24 2014 +0200
+
+    docs
+
+src/atop.erl
+
+commit a8294be74a2daf61e5492b38fc0309a971ea6914
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Sep 16 09:50:38 2014 +0200
+
+    refactored presenttion code
+
+src/atop.erl
+
+commit 9d5cd5f76d40becc4d918e6115b7b868843c155b
+Author: mats cronqvist <masse@klarna.com>
+Date:   Mon Sep 15 13:22:43 2014 +0200
+
+    add dtop:set_max_procs/1
+
+src/dtop.erl
+
+commit a08c3699f51f73b2881486a165580b6aa4ac057e
+Author: mats cronqvist <masse@klarna.com>
+Date:   Thu Sep 11 12:46:33 2014 +0200
+
+    v0.88.0
+
+ChangeLog
+src/eper.app.src
+
+commit 46930d5b27422034010e84d3dbda07cf78c233bf
+Author: mats cronqvist <masse@klarna.com>
+Date:   Thu Sep 11 12:43:00 2014 +0200
+
+    fix crashing bug in atop
+
+.gitignore
+src/atop.erl
+
+commit ef60d4a32efa7fd32fee772078ae542dac1330ac
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Sep 3 18:46:39 2014 +0200
+
+    implement atop:calls/0
+
+src/atop.erl
+
+commit 55e3f69df5e3bcb74b42d2ba056c076298ed6ea7
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Sep 3 10:43:05 2014 +0200
+
+    v0.87.0
+
+ChangeLog
+src/eper.app.src
+
+commit ebecc8a76a32e53547006af5f1710be10b59da16
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Sep 2 14:54:38 2014 +0200
+
+    somewhat self-documenting
+
+src/atop.erl
+
+commit 099cff6ba85a2b0b4a7b2d29d1b3c8a4dee6909a
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Aug 27 10:43:31 2014 +0200
+
+    atop works, but the interface is pretty arcane
+
+src/atop.erl
+
+commit 93cbc73f59240bb9f2c802cd678680970f2e900f
+Author: mats cronqvist <masse@klarna.com>
+Date:   Mon Aug 25 10:44:51 2014 +0200
+
+    add atop (allocator visualizer)
+
+.gitignore
+src/atop.erl
+
+commit 5b167c9ed7ffbb2c81d9d21fd5984bbcd97141e0
+Author: mats cronqvist <masse@klarna.com>
+Date:   Fri Aug 15 12:34:00 2014 +0200
+
+    v0.86.0
+
+AUTHORS
+ChangeLog
+src/eper.app.src
+
+commit 223302da65dbc4b9bee29a10bb4056758ddcacdb
+Author: mats cronqvist <masse@klarna.com>
+Date:   Fri Aug 15 11:59:35 2014 +0200
+
+    handle binaries in RTP's
+
+src/redbug_msc.erl
+
+commit 461382ad37a0aa0f35b535b691fef842baf99f0f
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Aug 12 18:03:40 2014 +0200
+
+    quick hack to support literal binaries in arg list
+
+Makefile
+src/redbug_msc.erl
+
+commit de3f5635b11c9ea9c66168b7c44b07a143fb1713
+Author: Magnus Henoch <magnus.henoch@gmail.com>
+Date:   Wed Jul 30 17:56:07 2014 +0100
+
+    In redbug script, use long node names if appropriate
+    If the node name of the target node contains a dot after the @ sign, it
+    must be a long node name, and we should use -name instead of -sname.
+
+priv/bin/redbug
+
+commit 56206a0bc7f15870f9aa4013de3f9808893347db
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Jun 25 14:40:22 2014 +0200
+
+    v0.85.0
+
+ChangeLog
+src/eper.app.src
+
+commit 8213c49dd30b06439f83815b4a1f4dfe6c5b8a10
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Jun 25 14:39:50 2014 +0200
+
+    prfDog drops secret when changing port
+
+src/prfDog.erl
+
+commit 3480de21b5c665d87e30bc2777c205fda04355f0
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Jun 25 11:30:53 2014 +0200
+
+    v0.84.0
+
+ChangeLog
+src/eper.app.src
+
+commit e8404b3f32698d1fcca704864ebc1eb35a5560f3
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Jun 24 16:46:34 2014 +0200
+
+    fix race conditions in tests
+
+src/prfDog.erl
+
+commit f422cc1de385f014fc8b3cd4f26a1d0370df7f26
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Jun 24 16:46:14 2014 +0200
+
+    implement prfDog:quit/0
+
+src/prfDog.erl
+
+commit 376883bd07620c7aaf0c0184860e21664e488482
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Jun 24 16:44:55 2014 +0200
+
+    cosmetic
+
+src/dogConsumer.erl
+
+commit 0de9c6f526be2347a53b7e4826d6e8b070010869
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Jun 24 16:44:33 2014 +0200
+
+    remove orddict dependency
+
+src/prfDog.erl
+src/prfHost.erl
+
+commit 3b7340ff2877f5c52c23d6b131581c59a808fd85
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Jun 24 16:42:01 2014 +0200
+
+    get collector state through prfHost:state/1
+
+src/prf.erl
+src/prfHost.erl
+
+commit b4c1061071f4d812b9145542784787550bf3f769
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Jun 24 16:40:36 2014 +0200
+
+    fix testcases
+
+src/watchdog.erl
+
+commit f6d3dc95728b64ce1c415a8ad8198f3ba9cd3962
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Jun 24 16:40:16 2014 +0200
+
+    add watchdog:delete_triggers/0
+
+src/watchdog.erl
+
+commit b52a1c72d463d4aed8f7782ab7a2fe2f7e9c7ab3
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Jun 24 12:49:34 2014 +0200
+
+    hide eunit behind TEST macro
+
+src/redbug_eunit.erl
+
+commit 638e8fc6a40091922cd6d5a7ac84e06ab5d04048
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Jun 24 12:48:54 2014 +0200
+
+    new rebar
+
+rebar
+
+commit 0d57710736c780a3e5247c78ad891fed9b53e69c
+Author: mats cronqvist <masse@klarna.com>
+Date:   Mon Jun 23 16:47:49 2014 +0200
+
+    make prf:stop/1 return the value of CB:terminate/1 (for testing)
+
+src/dogConsumer.erl
+src/prfDog.erl
+src/prfHost.erl
+
+commit 1538074ed5fef965b2943164fbe3a29e86ce80be
+Author: mats cronqvist <masse@klarna.com>
+Date:   Mon Jun 23 16:28:54 2014 +0200
+
+    prfDog unit test
+
+src/dogConsumer.erl
+src/prfDog.erl
+
+commit 34358d534a6ef666ddac3c832196c1d5ca795ba1
+Author: mats cronqvist <masse@klarna.com>
+Date:   Mon Jun 23 14:29:06 2014 +0200
+
+    fix prfDog/watchdog interwork
+
+src/prfDog.erl
+src/prf_crypto.erl
+
+commit 066c9251e6e51dd6fd56be1546906becafd1f5b8
+Author: mats cronqvist <masse@klarna.com>
+Date:   Mon Jun 9 16:18:16 2014 +0200
+
+    cosmetic
+
+src/redbug.erl
+
+commit 828acc90bbd8f164913cb50efd1295c7c81b6a98
+Author: mats cronqvist <masse@klarna.com>
+Date:   Sun Jun 8 22:12:42 2014 +0200
+
+    cosmetic
+
+src/redbug.erl
+
+commit 2e9ddf3b3ae95ca5f64adfc7d12e5922cc506bbb
+Author: mats cronqvist <masse@klarna.com>
+Date:   Sun Jun 8 21:42:13 2014 +0200
+
+    v0.83.0
+
+ChangeLog
+src/eper.app.src
+
+commit 1915fd0b841691a4d823d7c05aaa655287cf983a
+Author: mats cronqvist <masse@klarna.com>
+Date:   Sun Jun 8 21:40:49 2014 +0200
+
+    fix double binary_to_term test case
+
+src/watchdog.erl
+
+commit 4290fbe01f690bcbea1e5117b67d9e522c264228
+Author: mats cronqvist <masse@klarna.com>
+Date:   Sun Jun 8 21:30:45 2014 +0200
+
+    fix block-discard interworking
+
+src/prfTrc.erl
+src/redbug.erl
+
+commit fad438c8fe20e0b3728ce2f2b6a886c2f15a3c30
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue May 20 11:00:53 2014 +0200
+
+    v0.82.0
+
+ChangeLog
+src/eper.app.src
+
+commit a11f8e0690952cb5be505ae7537c62b72dd76d87
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue May 20 10:53:37 2014 +0200
+
+    init collector state at startup
+
+src/prfTarg.erl
+
+commit 0a864efa07e3f8209ea5dd7a54aff9d65ba1d9c4
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue May 20 10:53:02 2014 +0200
+
+    handle double term_to_binary
+
+src/prf_crypto.erl
+
+commit e6b9ec549c119704cd7baf7a509c6aa68de23eda
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue May 20 10:52:27 2014 +0200
+
+    cosmetic
+
+.gitignore
+src/prfTarg.erl
+
+commit 21055c70fbfd520a7844c6d20e8cc43cee7ed90b
+Author: mats cronqvist <masse@klarna.com>
+Date:   Fri May 16 13:21:23 2014 +0200
+
+    v0.81.0
+
+ChangeLog
+src/eper.app.src
+
+commit 07b2e1170a1109fd3d0dca6c885c4dc49336ea14
+Author: mats cronqvist <masse@klarna.com>
+Date:   Fri May 9 14:05:00 2014 +0200
+
+    hide eunit tests from dialyzer
+
+src/redbug_msc.erl
+src/watchdog.erl
+
+commit d1a1deaeb5b3580fd1fbd9d60daf6e076917973a
+Author: mats cronqvist <masse@klarna.com>
+Date:   Fri May 9 14:03:23 2014 +0200
+
+    fix dead code
+
+src/prfSys.erl
+
+commit 3ee4d232d8e1d0a1116daace315db3f1909bbb6d
+Author: mats cronqvist <masse@klarna.com>
+Date:   Fri May 9 14:03:02 2014 +0200
+
+    fix register race condition in prfHost
+
+src/prfHost.erl
+
+commit 40bcc9aa163c88ded24b7d22694c13e3639d3258
+Author: mats cronqvist <masse@klarna.com>
+Date:   Fri May 9 14:02:20 2014 +0200
+
+    remove gen_serv from prfDog
+
+src/prfDog.erl
+
+commit 77072f63c6c1270a8cb7cf8e4017bfd3326b657c
+Author: mats cronqvist <masse@klarna.com>
+Date:   Fri May 9 14:01:48 2014 +0200
+
+    add make dialyzer
+
+Makefile
+
+commit 519286a93829d6e5600751f1ddbd1691cc2c9e0a
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Apr 30 15:12:56 2014 +0200
+
+    add trc file tests
+
+src/redbug_eunit.erl
+src/replay_trc.erl
+
+commit c4683659c5caf9f3bd5546eccf4b13b030ba3a28
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Apr 30 13:28:13 2014 +0200
+
+    cosmetic
+
+src/redbug_eunit.erl
+
+commit 0f4553482db0073ecc3e5e961475a5b00eb2b3e6
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Apr 30 13:25:54 2014 +0200
+
+    fix call trace printing
+
+src/prfTrc.erl
+src/redbug.erl
+src/redbug_eunit.erl
+
+commit a5629fe60b2cdae1573b399aaae3cfef1e1b65a6
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Apr 29 16:44:31 2014 +0200
+
+    fix counting of messages
+
+src/redbug.erl
+
+commit 38c1f00143aaedac5db0d234452640d432754a33
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Apr 29 14:54:42 2014 +0200
+
+    fix call_time printing
+
+src/redbug.erl
+
+commit b0d31b80103b66a604c0fddda59cc094883e4f0e
+Author: mats cronqvist <masse@klarna.com>
+Date:   Tue Apr 29 14:14:28 2014 +0200
+
+    more and better eunit tests
+
+src/redbug.erl
+src/redbug_eunit.erl
+src/watchdog.erl
+
+commit c58f9bd920b5d9aa4f2554a69e2ae244dfc96376
+Author: mats cronqvist <masse@klarna.com>
+Date:   Mon Apr 28 15:47:31 2014 +0200
+
+    nicer call tracing printouts
+
+src/redbug.erl
+
+commit 6c833ae51bd16efb0cad35442e0102872447b914
+Author: mats cronqvist <masse@klarna.com>
+Date:   Mon Apr 28 12:56:08 2014 +0200
+
+    implement call_count and call_time support
+
+src/prfTrc.erl
+src/redbug.erl
+
+commit fd59ec87ae2b6198297bf88833752811a8bef80f
+Author: mats cronqvist <masse@klarna.com>
+Date:   Mon Apr 28 12:54:31 2014 +0200
+
+    fix trace stopping with call_count
+
+src/prfTrc.erl
+
+commit ebebdf5b4879bfe1b28bc570f0c3606183c5641c
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Apr 23 13:57:49 2014 +0200
+
+    allow starting of tracing with call_count etc.
+
+src/redbug_msc.erl
+
+commit 7317417b05d70780b494725ed19c9d68c01c0800
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Apr 23 11:56:25 2014 +0200
+
+    refactor to support call_count
+
+src/redbug_msc.erl
+
+commit 541d97764c79321f4ec24ac481379c70ccfa8ef3
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Apr 23 11:53:42 2014 +0200
+
+    move some parsing to parsing section
+
+src/redbug_msc.erl
+
+commit 77f6bfff90c039f68e5eed320d27263b9633d91b
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Apr 23 10:23:57 2014 +0200
+
+    make both "m:_" and "m:V" do global tracing
+
+src/redbug_msc.erl
+
+commit 803d245ae01dd06221ae79aa62a136b7197d6413
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Apr 23 10:23:06 2014 +0200
+
+    fix hacky parsing of "m" in redbug
+
+src/redbug_msc.erl
+
+commit fa935b2c6c289e7ac0c9728c090b66ef506724f6
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Apr 23 10:19:46 2014 +0200
+
+    remove old tuple-API from redbug
+
+src/redbug.erl
+
+commit eb481b385833f3cc45358957890b2cfe65ac4241
+Author: mats cronqvist <masse@klarna.com>
+Date:   Thu Apr 10 15:27:20 2014 +0200
+
+    v0.80.0
+
+ChangeLog
+src/eper.app.src
+
+commit 27e5cdebe13adbdf96bdf3c26bdae22a27d0ff48
+Author: mats cronqvist <masse@klarna.com>
+Date:   Thu Apr 10 15:25:00 2014 +0200
+
+    make make magic
+
+Makefile
+bin/release.sh
+release.sh
+
+commit 8dc9c9e7ba21ce1b59bc370eab46cba64ca3c7cf
+Author: mats cronqvist <masse@klarna.com>
+Date:   Thu Apr 10 14:55:43 2014 +0200
+
+    cosmetic
+
+Makefile
+
+commit 7c7d0f76900b7aa6b85c3920baf60bb3092b8996
+Author: mats cronqvist <masse@klarna.com>
+Date:   Mon Mar 31 09:21:00 2014 +0000
+
+    fix some prfDog bugs
+
+src/prfHost.erl
+
+commit 3d8421d2f461ebaff38ac7e0899c61c965770ec4
+Author: mats cronqvist <masse@klarna.com>
+Date:   Fri Mar 28 08:47:35 2014 +0000
+
+    cosmetic
+
+src/watchdogConsumer.erl
+
+commit 815bdf84e6cab179456e2f37326a56e743799414
+Author: mats cronqvist <masse@klarna.com>
+Date:   Fri Mar 28 08:47:18 2014 +0000
+
+    remove dead code
+
+src/prfHost.erl
+
+commit 19c2fb43c23f31678c58ba5483216b0dd699e2ff
+Author: mats cronqvist <masse@klarna.com>
+Date:   Thu Mar 27 17:38:20 2014 +0000
+
+    doc
+
+doc/watchdog.txt
+
+commit 6cef9ce50e084a4c63237f70b80350f7be982fa2
+Author: mats cronqvist <masse@klarna.com>
+Date:   Thu Mar 27 17:29:12 2014 +0000
+
+    rewrite of prfDog
+
+src/prfDog.erl
+src/prfHost.erl
+src/prf_crypto.erl
+
+commit 8a74f4e2161500eb26bdd490c2d5440e386216ad
+Author: mats cronqvist <masse@klarna.com>
+Date:   Fri Feb 7 12:09:00 2014 +0100
+
+    add testcase
+
+src/redbug_eunit.erl
+
+commit 9e929e042c25df332cef038c9c24a9ba4258ffd8
+Author: mats cronqvist <masse@klarna.com>
+Date:   Wed Feb 5 13:35:55 2014 +0100
+
+    add eunit suite for redbug
+
+src/redbug_eunit.erl
+
+commit aa2b872d08ea93e5bfd58c4609081579e40a90b2
+Author: mats cronqvist <masse@klarna.com>
+Date:   Mon Jan 20 15:38:55 2014 +0100
+
+    v0.79
+
+ChangeLog
+src/eper.app.src
+
+commit fad22c4e670fb9fb2ec3272485e160a29e0def36
+Author: mats cronqvist <masse@klarna.com>
+Date:   Mon Jan 20 15:38:17 2014 +0100
+
+    work around edoc choking on spec x()->A..B.
+
+src/getoptw.erl
+
+commit 69364c7dc8387c937bf76d260cfa9bd1163c9b6a
 Author: mats cronqvist <masse@klarna.com>
 Date:   Thu Jan 16 15:02:31 2014 +0100
 
     v0.78
 
+ChangeLog
 src/eper.app.src
 
 commit 8477496ad8aa2673eae0eb610b132addc9dd6d09

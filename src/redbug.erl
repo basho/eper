@@ -33,6 +33,7 @@
           %% print-related
           arity        = false,        % arity instead of args
           buffered     = false,        % output buffering
+          discard      = false,        % discard messages (when counting)
           print_calls  = true,         % print calls
           print_file   = "",           % file to print to (standard_io)
           print_msec   = false,        % print milliseconds in timestamps?
@@ -92,18 +93,19 @@ help() ->
      , "msgs         (10)          stop trace after this many msgs"
      , "target       (node())      node to trace on"
      , "blocking     (false)       block start/2, return a list of messages"
+     , "arity        (false)       print arity instead of arg list"
+     , "buffered     (false)       buffer messages till end of trace"
+     , "discard      (false)       discard messages (when counting)"
      , "max_queue    (5000)        fail if internal queue gets this long"
      , "max_msg_size (50000)       fail if seeing a msg this big"
      , "procs        (all)         (list of) Erlang process(es)"
      , "                             all|pid()|atom(RegName)|{pid,I2,I3}"
      , "  print-related opts"
-     , "arity        (false)       print arity instead of arg list"
-     , "buffered     (false)       buffer messages till end of trace"
      , "print_calls  (true)        print calls"
      , "print_file   (standard_io) print to this file"
      , "print_msec   (false)       print milliseconds on timestamps"
      , "print_depth  (999999)      formatting depth for \"~P\""
-     , "print_re     (\"\")        print only strings that match this RE"
+     , "print_re     (\"\")          print only strings that match this RE"
      , "print_fun    ()            custom print handler, fun/1 or fun/2;"
      , "                             fun(TrcMsg) -> <ignored>"
      , "                             fun(TrcMsg,AccOld) -> AccNew"
@@ -211,7 +213,7 @@ assert_print_fun(Cnf) ->
 make_print_fun(Cnf) ->
   case Cnf#cnf.blocking of
     false-> mk_outer(Cnf);
-    true -> fun(X,0) -> [X]; (X,A) -> [X|A] end
+    true -> mk_blocker()
   end.
 
 assert_cookie(#cnf{cookie=''}) -> ok;
@@ -326,8 +328,24 @@ spawn_printer(PrintFun,Cnf) ->
 
 wrap_print_fun(#cnf{print_fun=PF}) ->
   case erlang:fun_info(PF,arity) of
-    {arity,1} -> fun(M,N) -> PF(M),N+1 end;
+    {arity,1} -> fun(M,N) -> PF(M),maybe_update_count(M,N) end;
     {arity,2} -> PF
+  end.
+
+maybe_update_count(M,N) ->
+  case element(1,M) of
+    call -> N+1;
+    send -> N+1;
+    recv -> N+1;
+    _    -> N
+  end.
+
+mk_blocker() ->
+  fun({_,{_,false},_,_},A)      -> A;
+     ({call_time,{_,[]},_,_},A) -> A;
+     ({call_count,{_,0},_,_},A) -> A;
+     (X,0)                      -> [X];
+     (X,A)                      -> [X|A]
   end.
 
 mk_outer(#cnf{file=[_|_]}) ->
@@ -337,25 +355,50 @@ mk_outer(#cnf{print_depth=Depth,print_msec=MS} = Cnf) ->
   fun({Tag,Data,PI,TS}) ->
       MTS = fix_ts(MS,TS),
       case {Tag,Data} of
-        {'call',{MFA,Bin}} ->
+        {call_time,{_,false}} ->
+          ok;
+        {call_time,{{M,F,A},PerProcCT}} ->
+          PerProc =
+            fun({_,Count,Sec,Usec},{AC,AT}) ->
+                {Count+AC,Sec*1000000+Usec+AT}
+            end,
+          {Count,Time} = lists:foldl(PerProc,{0,0},PerProcCT),
+          [OutFun("~n% ~6s : ~6s : ~w:~w/~w",
+                  [prf:human(Count),prf:human(Time),M,F,A]) || 0 < Count];
+        {'call_count',{_,false}} ->
+          ok;
+        {'call_count',{{M,F,A},Count}} ->
+          [OutFun("~n% ~6s : ~w:~w/~w", [prf:human(Count),M,F,A]) || 0 < Count];
+        {'call',{{M,F,A},Bin}} ->
           case Cnf#cnf.print_calls of
             true ->
-              OutFun("~n~s ~s ~P",[MTS,to_str(PI),MFA,Depth]),
+              case is_integer(A) of
+                true ->
+                  OutFun("~n% ~s ~s~n% ~w:~w/~w",[MTS,to_str(PI),M,F,A]);
+                false->
+                  As = string:join([flat("~P",[E,Depth]) || E <- A],", "),
+                  OutFun("~n% ~s ~s~n% ~w:~w(~s)",[MTS,to_str(PI),M,F,As])
+              end,
               lists:foreach(fun(L)->OutFun("  ~s",[L]) end, stak(Bin));
             false->
               ok
           end;
         {'retn',{{M,F,A},Val}} ->
-          OutFun("~n~s ~s ~p:~p/~p -> ~P",[MTS,to_str(PI),M,F,A,Val,Depth]);
+          OutFun("~n% ~s ~s~n% ~p:~p/~p -> ~P",
+                 [MTS,to_str(PI),M,F,A,Val,Depth]);
         {'send',{MSG,ToPI}} ->
-          OutFun("~n~s ~s ~s <<< ~P",
+          OutFun("~n% ~s ~s~n% ~s <<< ~P",
                  [MTS,to_str(PI),to_str(ToPI),MSG,Depth]);
         {'recv',MSG} ->
-          OutFun("~n~s ~s <<< ~P",[MTS,to_str(PI),MSG,Depth])
+          OutFun("~n% ~s ~s~n% <<< ~P",
+                 [MTS,to_str(PI),MSG,Depth])
       end
   end.
 
-to_str({Pid,Reg}) -> flat("~w(~p)",[Pid,Reg]).
+to_str({Pid,Reg}) ->
+  flat("~w(~p)",[Pid,Reg]);
+to_str(RegisteredName) ->
+  flat("~p", [RegisteredName]).
 
 mk_out(#cnf{print_re=RE,print_file=File}) ->
   FD = get_fd(File),
@@ -380,8 +423,10 @@ fix_ts(MS,TS) ->
     false-> ts(TS)
   end.
 
-ts({H,M,S,_Us}) -> flat("~2.2.0w:~2.2.0w:~2.2.0w",[H,M,S]).
-ts_ms({H,M,S,Us}) -> flat("~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0w",[H,M,S,Us div 1000]).
+ts({H,M,S,_Us}) ->
+  flat("~2.2.0w:~2.2.0w:~2.2.0w",[H,M,S]).
+ts_ms({H,M,S,Us}) ->
+  flat("~2.2.0w:~2.2.0w:~2.2.0w.~3.3.0w",[H,M,S,Us div 1000]).
 
 flat(Form,List) ->
   lists:flatten(io_lib:fwrite(Form,List)).
@@ -419,6 +464,7 @@ mfaf(I) ->
 %%% Tag = time | flags | rtps | procs | where
 %%% Where = {term_buffer,{Pid,Count,MaxQueue,MaxSize}} |
 %%%         {term_stream,{Pid,Count,MaxQueue,MaxSize}} |
+%%%         {term_discard,{Pid,Count,MaxQueue,MaxSize}} |
 %%%         {file,File,Size,Count} |
 %%%         {ip,Port,Queue}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -444,7 +490,7 @@ conf_file(Cnf) ->
   {file,Cnf#cnf.file,Cnf#cnf.file_size,Cnf#cnf.file_count}.
 
 conf_term(Cnf) ->
-  {chk_buffered(Cnf#cnf.buffered),
+  {chk_buffered(Cnf#cnf.buffered,Cnf#cnf.discard),
    {Cnf#cnf.print_pid,
     chk_msgs(Cnf#cnf.msgs),
     Cnf#cnf.max_queue,
@@ -456,8 +502,9 @@ maybe_arity(_,Flags)                -> Flags.
 chk_time(Time) when is_integer(Time) -> Time;
 chk_time(X) -> throw({bad_time,X}).
 
-chk_buffered(true)  -> term_buffer;
-chk_buffered(false) -> term_stream.
+chk_buffered(_,true)  -> term_discard;
+chk_buffered(true,_)  -> term_buffer;
+chk_buffered(false,_) -> term_stream.
 
 chk_proc(Pid) when is_pid(Pid) -> Pid;
 chk_proc(Atom) when is_atom(Atom)-> Atom;
@@ -471,9 +518,7 @@ chk_msgs(X) -> throw({bad_msgs,X}).
 
 chk_trc('send',{Flags,RTPs})                   -> {['send'|Flags],RTPs};
 chk_trc('receive',{Flags,RTPs})                -> {['receive'|Flags],RTPs};
-chk_trc('arity',{Flags,RTPs})                  -> {['arity'|Flags],RTPs};
 chk_trc(RTP,{Flags,RTPs}) when ?is_string(RTP) -> {Flags,[chk_rtp(RTP)|RTPs]};
-chk_trc(RTP,{Flags,RTPs}) when is_tuple(RTP)   -> {Flags,[chk_rtp(RTP)|RTPs]};
 chk_trc(X,_)                                   -> throw({bad_trc,X}).
 
 -define(is_aal(M,F,MS), is_atom(M),is_atom(F),is_list(MS)).

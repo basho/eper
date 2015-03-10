@@ -15,6 +15,7 @@
     ,delete_subscriber/1,reset_subscriber/1
     ,delete_subscribers/0,reset_subscribers/0
     ,add_trigger/2,delete_trigger/1
+    ,delete_triggers/0
     ,message/1]).
 
 % gen_serv callbacks
@@ -24,7 +25,6 @@
     ,init/1
     ,rec_info/1]).
 
--include_lib("eunit/include/eunit.hrl").
 -include_lib("kernel/include/inet.hrl").
 -include_lib("kernel/include/file.hrl").
 -include("log.hrl").
@@ -116,6 +116,9 @@ config(Tag,Val) ->
 delete_trigger(Key) ->
   call_wd({delete_trigger,Key}).
 
+delete_triggers() ->
+  call_wd(delete_triggers).
+
 add_trigger(Key,Val) ->
   call_wd({add_trigger,Key,Val}).
 
@@ -190,6 +193,8 @@ handle_call({cfg,cache_connections,TR},_,LD) when is_boolean(TR)->
   {ok,LD#ld{cache_connections=TR}};
 
 % admin triggers
+handle_call(delete_triggers,_,LD) ->
+  {ok,LD#ld{triggers=delete_triggers(LD#ld.triggers)}};
 handle_call({delete_trigger,Key},_,LD) ->
   {ok,LD#ld{triggers=delete_trigger(LD#ld.triggers,Key)}};
 handle_call({add_trigger,Key,Val},_,LD) ->
@@ -261,6 +266,10 @@ stop_monitor() ->
 %% Tag :: atom() - tags into the data structure. i.e. [prfSys,iowait]
 add_trigger(Triggers,ID,Val) ->
   maybe_restart(ID,[{ID,Val}|clean_triggers(Triggers,[ID])]).
+
+delete_triggers(Triggers) ->
+  [delete_trigger(Triggers,T) || T <- Triggers],
+  [].
 
 delete_trigger(Triggers,ID) ->
   maybe_restart(ID,clean_triggers(Triggers,[ID])).
@@ -572,6 +581,8 @@ expand_recs(Term) -> Term.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% eunit
 %%lists:member(shell,[element(1,T)||T<-erlang:get_stacktrace()]).
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
 
 udp_port_test() ->
   watchdog:start(),
@@ -585,7 +596,7 @@ udp_port_test() ->
 delete_trigger_test() ->
   watchdog:start(),
   watchdog:config(timeout_release,0),
-  delete_triggers(),
+  watchdog:delete_triggers(),
   watchdog:add_trigger(user,true),
   watchdog:delete_trigger(user),
   PR0 = mk_receiver(udp),
@@ -600,7 +611,7 @@ delete_trigger_test() ->
 
 start_stop_test() ->
   watchdog:start(),
-  delete_triggers(),
+  watchdog:delete_triggers(),
   watchdog:config(timeout_release,0),
   watchdog:add_trigger(user,true),
   PR0 = mk_receiver(udp),
@@ -676,10 +687,8 @@ subscriber_send_tcp_cache_test() ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% test helpers
 
-delete_triggers() ->
-  [watchdog:delete_trigger(K) || {K,_} <- state(triggers)].
-
 mk_receiver(Prot) ->
+  receive after 500 -> ok end,
   spawn_monitor(mk_receiver(Prot,[binary,{reuseaddr,true},{active,true}])).
 
 mk_receiver(udp,Opts) ->
@@ -729,3 +738,5 @@ validate_file(FN,Match) ->
 
 to_list(L) when is_list(L) -> L;
 to_list(A) when is_atom(A) -> atom_to_list(A).
+
+-endif.
