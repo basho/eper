@@ -11,8 +11,6 @@
 
 -export([transform/1]).
 
--include_lib("eunit/include/eunit.hrl").
-
 -define(is_string(Str),
         (Str=="" orelse (9=<hd(Str) andalso hd(Str)=<255))).
 
@@ -28,24 +26,34 @@ to_string(X)                    -> exit({illegal_input,X}).
 %% returns {{Module,Function,Arity},[{Head,Cond,Body}],[Flag]}
 %% i.e. the args to erlang:trace_pattern/3
 
-compile({M,F,Ari,[],Actions}) when is_integer(Ari) ->
-  compile({M,F,lists:duplicate(Ari,{var,'_'}),[],Actions});
-compile({M,OF,As,Gs,Actions}) ->
-  {F,A,Flags} = chk_fa(OF,As),
+compile({Mod,F,As,Gs,Acts}) ->
+  {Fun,Arg}   = chk_fa(F,As),
   {Vars,Args} = compile_args(As),
-  {{M,F,A}, [{Args,compile_guards(Gs,Vars),compile_acts(Actions)}], Flags}.
+  Guards      = compile_guards(Gs,Vars),
+  Actions     = compile_acts(Acts),
+  Flags       = compile_flags(F,Acts),
+  {{Mod,Fun,Arg},[{Args,Guards,Actions}],Flags}.
 
-chk_fa('X',_) -> {'_','_',[global]};
-chk_fa('_',_) -> {'_','_',[local]};
-chk_fa(F,'_') -> {F,'_',[local]};
-chk_fa(F,As)  -> {F,length(As),[local]}.
+chk_fa(' ',_) -> {'_','_'};
+chk_fa(F,'_') -> {F,  '_'};
+chk_fa(F,As)  -> {F,length(As)}.
+
+compile_flags(F,Acts) ->
+  LG =
+    case F of
+      ' ' -> global;
+      _   -> local
+    end,
+  lists:foldr(fun(E,A)->try [fl_fun(E)|A] catch _:_ -> A end end,[LG],Acts).
+
+fl_fun("count") -> call_count;
+fl_fun("time")  -> call_time.
 
 compile_acts(As) ->
-  [ac_fun(A)|| A <- As].
+  lists:foldr(fun(E,A)->try [ac_fun(E)|A] catch _:_ -> A end end,[],As).
 
 ac_fun("stack") -> {message,{process_dump}};
-ac_fun("return")-> {exception_trace};
-ac_fun(X)       -> exit({unknown_action,X}).
+ac_fun("return")-> {exception_trace}.
 
 compile_guards(Gs,Vars) ->
   {Vars,O} = lists:foldr(fun gd_fun/2,{Vars,[]},Gs),
@@ -61,10 +69,15 @@ gd_fun({Op,V1,V2},{Vars,O}) ->               % binary
 unpack_op(Op,As,Vars) ->
   list_to_tuple([Op|[unpack_var(A,Vars)||A<-As]]).
 
+unpack_var({bin,Bs},_) ->
+  {value,Bin,[]} = erl_eval:expr({bin,1,Bs},[]),
+  Bin;
 unpack_var({tuple,Es},Vars) ->
   {list_to_tuple([unpack_var(E,Vars)||E<-Es])};
 unpack_var({list,Es},Vars) ->
   [unpack_var(E,Vars)||E<-Es];
+unpack_var({string,S},_) ->
+  S;
 unpack_var({var,Var},Vars) ->
   case proplists:get_value(Var,Vars) of
     undefined -> exit({unbound_variable,Var});
@@ -83,6 +96,9 @@ compile_args('_') ->
 compile_args(As) ->
   lists:foldl(fun ca_fun/2,{[],[]},As).
 
+ca_fun({bin,Bs},{Vars,O}) ->
+  {value,Bin,[]} = erl_eval:expr({bin,1,Bs},[]),
+  {Vars,O++[Bin]};
 ca_fun({list,Es},{Vars,O}) ->
   {Vs,Ps} = ca_fun_list(Es,Vars),
   {Vs,O++[Ps]};
@@ -128,7 +144,7 @@ assert_type(Type,Val) ->
 %%   "a:b(X,Y)when is_record(X,rec) and Y==0, (X==z)"
 %%   "a:b->stack", "a:b(X)whenX==2->return"
 %% returns
-%%   {atom(M),atom(F),list(Arg)|integer(Arity),list(Guard),list(Action)}
+%%   {atom(M),atom(F),list(Arg)|atom('_'),list(Guard),list(Action)}
 parse(Str) ->
   {Body,Guard,Action} = assert(split_fun(Str),{split_string,Str}),
   {M,F,A}             = assert(body_fun(Body),{parse_body,Str}),
@@ -147,16 +163,10 @@ split_fun(Str) ->
           nomatch       -> {Str,""}
         end,
       % strip off the guards, if any
-      {S,Guard} =
+      {Body,Guard} =
         case re:run(St,"^(.+[\\s)])+when\\s(.+)\$",[{capture,[1,2],list}]) of
           {match,[Y,G]} -> {Y,G};
           nomatch       -> {St,""}
-        end,
-      % add a wildcard F, if Body is just an atom (presumably a module)
-      Body =
-        case re:run(S,"^\\s*[a-zA-Z0-9_]+\\s*\$") of
-          nomatch -> S;
-          _       -> S++":'_'"
         end,
       {Body,Guard,Action}
   end.
@@ -166,19 +176,21 @@ body_fun(Str) ->
       {done,{ok,Toks,1},[]} = erl_scan:tokens([],Str++". ",1),
       case erl_parse:parse_exprs(Toks) of
         {ok,[{op,1,'/',{remote,1,{atom,1,M},{atom,1,F}},{integer,1,Ari}}]} ->
-          {M,F,Ari};
+          {M,F,lists:duplicate(Ari,{var,'_'})}; % m:f/2
         {ok,[{call,1,{remote,1,{atom,1,M},{atom,1,F}},Args}]} ->
-          {M,F,[arg(A) || A<-Args]};
+          {M,F,[arg(A) || A<-Args]};            % m:f(...)
         {ok,[{call,1,{remote,1,{atom,1,M},{var,1,'_'}},Args}]} ->
-          {M,'_',[arg(A) || A<-Args]};
+          {M,' ',[arg(A) || A<-Args]};          % m:_(...)
         {ok,[{call,1,{remote,1,{atom,1,M},{var,1,_}},Args}]} ->
-          {M,'X',[arg(A) || A<-Args]};
+          {M,' ',[arg(A) || A<-Args]};          % m:V(...)
         {ok,[{remote,1,{atom,1,M},{atom,1,F}}]} ->
-          {M,F,'_'};
+          {M,F,'_'};                            % m:f
         {ok,[{remote,1,{atom,1,M},{var,1,'_'}}]} ->
-          {M,'_','_'};
+          {M,' ','_'};                          % m:_
         {ok,[{remote,1,{atom,1,M},{var,1,_}}]} ->
-          {M,'X','_'};
+          {M,' ','_'};                          % m:V
+        {ok,[{atom,1,M}]} ->
+          {M,'_','_'};                          % m
         {ok,C} ->
           exit({this_is_too_confusing,C})
      end
@@ -221,26 +233,36 @@ arg_list(V)            -> arg(V).
 
 actions_fun(Str) ->
   fun() ->
-      string:tokens(Str,";,")
+      Acts = string:tokens(Str,";,"),
+      [exit({unknown_action,A}) || A <- Acts, not lists:member(A,acts())],
+      Acts
   end.
+
+acts() ->
+  ["stack","return","time","count"].
 
 assert(Fun,Tag) ->
   try Fun()
   catch
     _:{this_is_too_confusing,C}  -> exit({syntax_error,{C,Tag}});
     _:{_,{error,{1,erl_parse,L}}}-> exit({syntax_error,{lists:flatten(L),Tag}});
+    _:{unknown_action,A}         -> exit({syntax_error,{unknown_action,A}});
     _:R                          -> exit({R,Tag,erlang:get_stacktrace()})
   end.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%% eunit tests
+-ifdef(TEST).
+-include_lib("eunit/include/eunit.hrl").
 
 t_0_test() ->
   ?assert(
      unit(
        {"f:c(<<>>)",
-        bad_type})).
+        {{f,c,1},
+         [{[<<>>],[],[]}],
+         [local]}})).
 t_1_test() ->
   ?assert(
      unit(
@@ -443,7 +465,7 @@ t27_test() ->
   ?assert(
      unit(
        {"x:y(z)->bla",
-        unknown_action})).
+        syntax_error})).
 t28_test() ->
   ?assert(
      unit(
@@ -533,27 +555,27 @@ t40_test() ->
        {"a:_(a)",
         {{a,'_','_'},
          [{[a],[],[]}],
-         [local]}})).
+         [global]}})).
 t41_test() ->
   ?assert(
      unit(
        {"a:_",
         {{a,'_','_'},[{'_',[],[]}],
-         [local]}})).
+         [global]}})).
 t42_test() ->
   ?assert(
      unit(
        {"a:_->return",
         {{a,'_','_'},
          [{'_',[],[{exception_trace}]}],
-         [local]}})).
+         [global]}})).
 t43_test() ->
   ?assert(
      unit(
        {"erlang:_({A}) when hd(A)=={}",
         {{erlang,'_','_'},
          [{[{'$1'}],[{'==',{hd,'$1'},{{}}}],[]}],
-         [local]}})).
+         [global]}})).
 t44_test() ->
   ?assert(
      unit(
@@ -589,8 +611,63 @@ t48_test() ->
         {{x,c,1},
          [{['$1'],[{'==',['$1','$1'],{'++',['$1'],['$1']}}],[]}],
          [local]}})).
+t49_test() ->
+  ?assert(
+     unit(
+       {"x:c(Aw)hen [A,A] == [A]++[A]",
+        syntax_error})).
+
+t50_test() ->
+  ?assert(
+     unit(
+       {"f:m(<<1,\"abc\">>)",
+        {{f,m,1},
+         [{[<<1,$a,$b,$c>>],[],[]}],
+         [local]}})).
+
+t51_test() ->
+  ?assert(
+     unit(
+       {"erlang:binary_to_list(A)when A==<<48>>",
+        {{erlang,binary_to_list,1},
+         [{['$1'],[{'==','$1',<<"0">>}],[]}],
+         [local]}})).
+
+t52_test() ->
+  ?assert(
+     unit(
+       {"erlang:binary_to_list(<<48>>)",
+        {{erlang,binary_to_list,1},
+         [{[<<"0">>],[],[]}],
+         [local]}})).
+
+t53_test() ->
+  ?assert(
+     unit(
+       {"erlang:binary_to_list(<<\"0\">>)",
+        {{erlang,binary_to_list,1},
+         [{[<<"0">>],[],[]}],
+         [local]}})).
+
+t54_test() ->
+  ?assert(
+     unit(
+       {"erlang:binary_to_list(<<1:3,1:5>>)",
+        {{erlang,binary_to_list,1},
+         [{[<<"!">>],[],[]}],
+         [local]}})).
+
+t55_test() ->
+  ?assert(
+     unit(
+       {"erlang:binary_to_list(<<1:3,_:5>>)",
+        unbound_var})).
 
 unit({Str,MS}) ->
-  try MS = transform(Str),true
-  catch _:{MS,_} -> Str,true
+  try
+    MS = transform(Str),true
+  catch
+    _:{MS,_} -> true
   end.
+
+-endif. % TEST
