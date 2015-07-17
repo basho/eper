@@ -16,10 +16,10 @@
 -export([state/0,quit/0]).
 
 state() ->
-  gen_server:call(?MODULE,state).
+  catch gen_server:call(?MODULE,state).
 
 quit() ->
-  gen_server:call(?MODULE,quit).
+  catch gen_server:call(?MODULE,quit).
 
 -include("log.hrl").
 
@@ -186,7 +186,8 @@ t0_test() ->
   watchdog:stop(),
   poll(),
   ?assertMatch([{_,_,user,troglodyte}],
-               prf:stop(dogC)).
+               prf:stop(dogC)),
+  prfDog:quit().
 
 poll() ->
   case prf:state(dogC) of
