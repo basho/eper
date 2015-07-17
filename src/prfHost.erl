@@ -7,7 +7,7 @@
 %%%-------------------------------------------------------------------
 -module(prfHost).
 
--export([start/3,start/4,stop/1,config/3]).
+-export([start/3,start/4,stop/1,config/3,state/1]).
 -export([loop/1]).                              %internal
 
 -record(ld, {node, server=[], collectors, config=[],
@@ -22,12 +22,14 @@
 
 start(Name,Node,Consumer) -> start(Name,Node,Consumer,no_proxy).
 start(Name,Node,Consumer,Proxy)
-  when is_atom(Name),is_atom(Node),is_atom(Consumer),is_atom(Proxy) ->
+  when is_atom(Name),is_atom(Node), is_atom(Proxy) ->
   assert_proxy(Proxy),
-  SpawnFun = fun()->init(Consumer,Node,Proxy) end,
-  case whereis(Name) of
-    undefined -> register(Name,Pid = spawner(SpawnFun)),Pid;
-    Pid       -> Pid
+  Self = self(),
+  Pid = spawner(fun()->init(Name,Node,Consumer,Proxy,Self) end),
+  Ref = erlang:monitor(process,Pid),
+  receive
+    {ack,Pid} -> erlang:demonitor(Ref,[flush]);
+    {'DOWN',Ref,process,Pid,_} -> exit({already_started,Name})
   end.
 
 spawner(F) ->
@@ -38,8 +40,18 @@ spawner(F) ->
 
 stop(Name) ->
   case whereis(Name) of
-    Pid when is_pid(Pid) -> Name ! {self(),stop}, receive stopped -> ok end;
-    _ -> ok
+    Pid when is_pid(Pid) ->
+      Name ! {self(),stop},
+      receive {stopped,R} -> R end;
+    _ -> not_started
+  end.
+
+state(Name) ->
+  case whereis(Name) of
+    Pid when is_pid(Pid) ->
+      Name ! {self(),poll},
+      receive {state,R} -> R end;
+    _ -> not_started
   end.
 
 config(Name,Type,Data) ->
@@ -50,7 +62,6 @@ config(Name,Type,Data) ->
 
 assert_proxy(no_proxy) -> ok;
 assert_proxy(Node) ->
-  erlang:set_cookie(Node,watchdog),
   case net_adm:ping(Node) of
     pong -> ok;
     _    -> exit({no_proxy,Node})
@@ -63,14 +74,16 @@ is_in_shell() ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% runs in the consumer process
 
-init(Consumer, Node, Proxy) ->
+init(Name,Node,Consumer,Proxy,Daddy) ->
+  true = register(Name, self()),
+  Daddy ! {ack, self()},
   process_flag(trap_exit,true),
   prf:ticker_even(),
   Collectors = Consumer:collectors(),
-  case Proxy of
-    no_proxy when Collectors=:=watchdog ->
+  case {Proxy,lists:member(prfDog,Collectors)} of
+    {no_proxy,true} ->
       exit(specify_proxy);
-    no_proxy ->
+    {no_proxy,false} ->
       loop(#ld{node = Node,
                proxy = [],
                consumer = Consumer,
@@ -80,16 +93,18 @@ init(Consumer, Node, Proxy) ->
       loop(#ld{node = Proxy,
                proxy = {Node,Collectors},
                consumer = Consumer,
-               collectors = subscribe(Proxy,[prfDog]),
+               collectors = subscribe(Proxy,Collectors),
                consumer_data = Consumer:init(Node)})
   end.
 
 loop(LD) ->
   receive
     {Stopper,stop} ->
-      ?log(stopping),
-      do_stop(LD),
-      Stopper ! stopped;
+      R = do_stop(LD),
+      Stopper ! {stopped,R};
+    {Poller,poll} ->
+      Poller ! {state,LD#ld.consumer_data},
+      ?LOOP(LD);
     {timeout, _, {tick}} when LD#ld.server == [] ->
       prf:ticker_even(),
       subscribe(LD#ld.node,LD#ld.collectors),
@@ -98,7 +113,7 @@ loop(LD) ->
     {timeout, _, {tick}} ->
       prf:ticker_even(),
       {Data,NLD} = get_data(LD),
-      Cdata = (NLD#ld.consumer):tick(NLD#ld.consumer_data, de_proxy(LD,Data)),
+      Cdata = (NLD#ld.consumer):tick(NLD#ld.consumer_data,de_proxy(LD,Data)),
       ?LOOP(NLD#ld{consumer_data = Cdata});
     {'EXIT',Pid,Reason} when Pid == LD#ld.server ->
       ?log({lost_target, Reason}),
@@ -120,32 +135,19 @@ loop(LD) ->
       Cdata = (LD#ld.consumer):config(LD#ld.consumer_data, Data),
       ?LOOP(LD#ld{consumer_data = Cdata});
     {config,CollData} ->
-      ?LOOP(maybe_conf(CollData, LD))
+      ?LOOP(do_config(CollData, LD))
   end.
 
 de_proxy(_,[]) -> [];
 de_proxy(LD,Data) ->
   case LD#ld.proxy of
     []              -> Data;
-    {Node,watchdog} -> dog_data(Data,Node);
-    {Node,Colls}    -> de_colls(Colls,dog_data(Data,Node))
+    {Node,[prfDog]} -> dog_data(Data,Node)
   end.
-
-de_colls(Colls,DogData) ->
-  F0 = fun({_,Ev},_) -> Ev=:=ticker end,
-  CD = orddict:filter(F0,DogData),
-  F1 = fun(C,_) -> lists:member(C,Colls) end,
-  orddict:filter(F1,CD).
 
 dog_data([{prfDog,DogData}|_],Node) ->
-  F = fun({N,_},_) -> N=:=Node end,
-  orddict:filter(F, DogData).
-
-maybe_conf(CollData, LD) ->
-  case LD#ld.proxy == [] of
-    true -> do_config(CollData, LD);
-    false-> ?log({no_config,running_with_proxy}),LD
-  end.
+  F = fun({N,_,_,_}) -> N=:=Node end,
+  lists:filter(F, DogData).
 
 do_config(CollData, LD) ->
   case LD#ld.server of

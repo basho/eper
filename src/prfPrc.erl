@@ -39,6 +39,7 @@
                     stack_size,heap_size,total_heap_size]).
 -define(TAGS,?SORT_ITEMS++?INFO_ITEMS).
 
+config(init,Config) -> config(init_cst(),Config);
 config(State,{items,Items}) when is_number(Items) -> State#cst{items=Items};
 config(State,{max_procs,MP}) when is_number(MP) -> State#cst{max_procs=MP};
 config(State,{add_extra,M,F}) -> add_extra(State,{M,F});
@@ -50,17 +51,18 @@ rm_extra (S=#cst{extra_items=X},MF) -> S#cst{extra_items=X--[MF]}.
 
 %%% returns {State, Data}
 collect(init) ->
-  collect({cst,get_info(#cst{})});
+  collect(init_cst());
 collect(Cst = #cst{items=Items})->
   Info = get_info(Cst),
-  {Cst#cst{old_info=Info}, {?MODULE,select(Cst,Info,Items)}};
-collect({cst,OldInfo}) ->
-  collect((#cst{})#cst{old_info=OldInfo}).
+  {Cst#cst{old_info=Info}, {?MODULE,select(Cst,Info,Items)}}.
+
+init_cst() ->
+  #cst{old_info=get_info(#cst{})}.
 
 get_info(Cst) ->
   case Cst#cst.max_procs < erlang:system_info(process_count) of
-    true -> {now(),[]};
-    false-> {now(),[{P,pid_info(P,?SORT_ITEMS)}||P<-lists:sort(processes())]}
+    true -> {prfTime:ts(),[]};
+    false-> {prfTime:ts(),[{P,pid_info(P,?SORT_ITEMS)}||P<-lists:sort(processes())]}
   end.
 
 %%% Dreds, Dmems, Mems and Msgqs are sorted lists of pids
@@ -71,7 +73,7 @@ select(Cst = #cst{old_info={Then,Olds}},{Now,Curs},Items) ->
   {DredL,DmemL,MemL,MsgqL} = topl(Olds,Curs,outf(Then,Now,Items),empties()),
   PidInfo = lists:usort([I || {_,I} <-lists:append([DredL,DmemL,MemL,MsgqL])]),
   [{node,node()},
-   {now,now()},
+   {now,prfTime:ts()},
    {dreds,e1e2(DredL)},
    {dmem,e1e2(DmemL)},
    {mem,e1e2(MemL)},
@@ -134,14 +136,14 @@ msgq([]) -> 0;
 msgq([_,_,{message_queue_len,Msgq}]) -> Msgq.
 
 %% callbacks for app-specific info
-extra_items(Pid,Items) -> 
+extra_items(Pid,Items) ->
   lists:append([extra_item(Pid,I) || I <- Items]).
 
 extra_item(Pid,{M,F}) when is_pid(Pid) ->
   try M:F(Pid)
   catch _:_ -> []
   end;
-extra_item(_,_) -> 
+extra_item(_,_) ->
   [].
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -151,42 +153,62 @@ pid_info(Pid) when is_pid(Pid) ->
   pid_info(Pid,?TAGS).
 
 pid_info(Pid,Tags) when is_list(Tags) ->
-  try [pidinfo(Pid,T) || T <- Tags]
-  catch _:_ -> []
-  end.
+  [pidinfo(Pid,T) || T <- Tags].
 
-pidinfo(Pid, Type = stack_size) ->
-  {Type,8*element(2,process_info(Pid, Type))};
-pidinfo(Pid, Type = heap_size) ->
-  {Type,8*element(2,process_info(Pid, Type))};
-pidinfo(Pid, Type = total_heap_size) ->
-  {Type,8*element(2,process_info(Pid, Type))};
-pidinfo(Pid, Type = last_calls) ->
-  try
-    case process_info(Pid,last_calls) of
-      {_,false} -> process_flag(Pid,save_calls,16),{Type,[]};
-      {_,Calls} -> {Type,lists:usort(Calls)}
-    end
-  catch
-    _:_ -> {Type,[]}
-  end;
-pidinfo(Pid, Type = registered_name) ->
-  case process_info(Pid, Type) of
-    [] -> {Type,[]};
-    XX -> XX
-  end;
-pidinfo(Pid, Type = initial_call) ->
-  case process_info(Pid, Type) of
-    {Type,{proc_lib,init_p,5}} ->
-      case proc_lib:translate_initial_call(Pid) of
-        {dets,init,2} -> {Type,{dets, element(2, dets:pid2name(Pid))}};
-        IC -> {Type,IC}
-      end;
-    {Type,{dets, do_open_file, 11}}->{Type,pinf_dets(Pid)};%gone in R12
-    XX -> XX
-  end;
-pidinfo(Pid, Type) ->
-  process_info(Pid, Type).
+pidinfo(Pid,Tag) ->
+  {Getter,Default} = pidinfo(Tag),
+  {Tag, try Getter(Pid) catch _:_ -> Default end}.
+
+pidinfo(Type = stack_size) ->
+  {fun(Pid) -> 8*element(2,process_info(Pid, Type))end,
+   0};
+pidinfo(Type = heap_size) ->
+  {fun(Pid) -> 8*element(2,process_info(Pid, Type))end,
+   0};
+pidinfo(Type = total_heap_size) ->
+  {fun(Pid) -> 8*element(2,process_info(Pid, Type))end,
+   0};
+pidinfo(Type = last_calls) ->
+  {fun(Pid) ->
+       case process_info(Pid,Type) of
+         {_,false} -> process_flag(Pid,save_calls,16),[];
+         {_,Calls} -> lists:usort(Calls)
+       end
+   end,
+   []};
+pidinfo(Type = registered_name) ->
+  {fun(Pid) ->
+       case process_info(Pid, Type) of
+         []       -> [];
+         {Type,N} -> N
+       end
+   end,
+  []};
+pidinfo(Type = initial_call) ->
+  {fun(Pid) ->
+       case process_info(Pid, Type) of
+         {Type,{proc_lib,init_p,5}} ->
+           case proc_lib:translate_initial_call(Pid) of
+             {dets,init,2}     -> pinf_dets(Pid);
+             {disk_log,init,2} -> pinf_disk_log(Pid);
+             IC                -> IC
+           end;
+         {Type,IC} -> IC
+       end
+   end,
+   []};
+pidinfo(Type) ->
+  {fun(Pid) -> {Type,I} = process_info(Pid, Type), I end,
+   []}.
 
 pinf_dets(Pid) ->
-  {dets, element(2, dets:pid2name(Pid))}.
+  case dets:pid2name(Pid) of
+    {ok,Dets} -> {dets, Dets};
+    undefined -> undefined_dets_table
+  end.
+
+pinf_disk_log(Pid) ->
+  case disk_log:pid2name(Pid) of
+    {ok, Log} -> {disk_log, Log};
+    undefined -> undefined_disk_log
+  end.

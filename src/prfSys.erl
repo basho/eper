@@ -24,7 +24,7 @@
 %%
 %% tag                  [unit]    source
 %% node                 [atom()]  erlang:node()
-%% now                  [now()]   erlang:now()
+%% now                  [now()]   prfTime:ts()
 %% procs                [count]   erlang:system_info(process_count)
 %% context_switches     [count/s] erlang:statistics(context_switches)
 %% gcs                  [count/s] erlang:statistics(garbage_collection)
@@ -62,7 +62,7 @@
 -export([collect/1,config/2]).
 
 -record(cst,{strategy=strategy(), node=node(), total_ram=0, cores=1,
-             cache=[], now=now()}).
+             cache=[], now=prfTime:ts()}).
 
 -define(RATES,[context_switches,gcs,gc_reclaimed,io_in,io_out,reductions,
                user,nice,kernel,idle,iowait,
@@ -90,7 +90,7 @@ stats() ->
   {Reds,_} = erlang:statistics(reductions),
   RunQ = erlang:statistics(run_queue),
 
-  [{now, now()},
+  [{now,prfTime:ts()},
    {procs,Procs},
    {context_switches,Ctxt},
    {gcs,GCs},
@@ -131,11 +131,11 @@ init_cst(Cst) ->
 
 strategy() ->
   Os_mon_p = [ok||{os_mon,_,_}<-application:which_applications()],
-  case {os:type(),os:version()} of
-    {{unix,linux},{2,N,_}} when 6 =< N -> {linux,init_linux()};
-    _ when Os_mon_p == [ok]            -> {os_mon,[]};
-    {{unix,_},_}                       -> {ps,init_ps()};
-    _                                  -> {none,[]}
+  case os:type() of
+    {unix,linux}            -> {linux,init_linux()};
+    _ when Os_mon_p == [ok] -> {os_mon,[]};
+    {unix,_}                -> {ps,init_ps()};
+    _                       -> {none,[]}
   end.
 
 %% OS info
@@ -150,10 +150,11 @@ os_info(_) ->
 proc_stat(FDs) ->
 %%user nice kernel idle iowait irq softirq steal
   {ok,Str} = file:pread(FDs,0,200),
-  case string:tokens(Str," \n") of
-    ["cpu",User,Nice,Kernel,Idle,Iowait|_] -> ok;
-    _ -> User=Nice=Kernel=Idle=Iowait=0
-  end,
+  [User,Nice,Kernel,Idle,Iowait] =
+    case string:tokens(Str," \n") of
+      ["cpu",I1,I2,I3,I4,I5|_] -> [I1,I2,I3,I4,I5];
+      _                        -> [0,0,0,0,0]
+    end,
   lists:zip([user,nice,kernel,idle,iowait],
             [to_sec(J) || J <- [User,Nice,Kernel,Idle,Iowait]]).
 
@@ -162,12 +163,13 @@ proc_self_stat(FDss) ->
 %%% minflt,cminflt,majflt,cmajflt,utime,stime,cutime,cstime,
 %%% priority,nice,num_threads,itrealvalue,starttime,vsize,rss
   {ok,Str} = file:pread(FDss,0,200),
-  case string:tokens(Str," ") of
-    [_,_,_,_,_,_,_,_,_,
-     Minflt,_,Majflt,_,Utime,Stime,_,_,
-     _,_,_,_,_,Vsize,Rss|_] -> ok;
-    _ -> Minflt=Majflt=Utime=Stime=Vsize=Rss=0
-  end,
+  {Minflt,Majflt,Utime,Stime,Vsize,Rss} =
+    case string:tokens(Str," ") of
+      [_,_,_,_,_,_,_,_,_,I10,_,I12,_,I14,I15,_,_,_,_,_,_,_,I23,I24|_] ->
+        {I10,I12,I14,I15,I23,I24};
+      _ ->
+        {0,0,0,0,0,0}
+    end,
   lists:zip([beam_user,beam_kernel,beam_vss,beam_rss,beam_minflt,beam_majflt],
             [to_sec(Utime),to_sec(Stime),to_int(Vsize),
              to_int(Rss), %% in pages...
@@ -179,8 +181,8 @@ to_sec(J) ->
 to_int(J) -> list_to_integer(J).
 
 init_linux() ->
-  {ok,FDs} = file:open("/proc/stat",[read]),
-  {ok,FDss} = file:open("/proc/self/stat",[read]),
+  {ok,FDs} = file:open("/proc/stat",[read,raw]),
+  {ok,FDss} = file:open("/proc/self/stat",[read,raw]),
   #fds{proc_stat=FDs,proc_self_stat=FDss}.
 
 cores({linux,#fds{proc_stat=Proc_stat}}) ->
@@ -194,7 +196,7 @@ cores(_) ->
   1.
 
 total_ram() ->
-  case file:open("/proc/meminfo",[read]) of
+  case file:open("/proc/meminfo",[read,raw]) of
     {ok,FD} ->
       try {ok,Str} = file:pread(FD,0,30),
           ["MemTotal:",T,"kB"|_] = string:tokens(Str," \n"),

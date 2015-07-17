@@ -1,11 +1,17 @@
-case erlang:system_info(otp_release) =< "R15B01" of
-    true  ->
-        HashDefine = [{d,old_hash}],
-        case lists:keysearch(erl_opts, 1, CONFIG) of
-            {value, {erl_opts, Opts}} ->
-                lists:keyreplace(erl_opts,1,CONFIG,{erl_opts,Opts++HashDefine});
-            false ->
-                CONFIG ++ [{erl_opts, HashDefine}]
-        end;
-    false -> CONFIG
+%% -*- mode: erlang;erlang-indent-level: 2;indent-tabs-mode: nil -*-
+%% vim: set ft=erlang ts=2 sw=2:
+
+KeyAppend = fun(Tag,[],E,_)         ->[{Tag,[E]}];
+               (Tag,[{Tag,O}|T],E,_)->[{Tag,[E|O]}|T];
+               (Tag,[H|T],E,G)      ->[H|G(Tag,T,E,G)]
+            end,
+code:ensure_loaded(crypto),
+CONFIG2 = case erlang:function_exported(crypto,block_encrypt,3) of
+            true  -> KeyAppend(erl_opts,CONFIG,{d,'CRYPTO_R16'},KeyAppend);
+            false -> CONFIG
+          end.
+
+case erlang:is_builtin(erlang,timestamp,0) of
+  true  -> KeyAppend(erl_opts,CONFIG2,{d,'HAS_TIMESTAMP'},KeyAppend);
+  false -> CONFIG2
 end.
