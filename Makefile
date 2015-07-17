@@ -38,3 +38,8 @@ release_patch: test
 	./bin/release.sh patch
 
 release: relase_patch
+
+distclean: clean
+	@./rebar delete-deps
+
+include tools.mk

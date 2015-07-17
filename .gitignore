@@ -18,3 +18,4 @@ Makefile.in
 config*
 *beam
 deps
+.local_dialyzer_plt
